@@ -10,3 +10,5 @@ docs/.ipynb_checkpoints
 docs/_build
 docs/api
 todo
+lite/_output/
+lite/wheels/
