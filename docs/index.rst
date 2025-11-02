@@ -54,8 +54,6 @@
 
    image_tools
 
-   masks
-
    m2_fit
 
    m2_display
