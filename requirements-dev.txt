@@ -17,6 +17,7 @@ ruff
 pylint
 yamllint
 rstcheck
+pyroma
 
 # formatting
 black
