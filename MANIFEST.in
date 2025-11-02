@@ -4,6 +4,8 @@ include CHANGELOG.rst
 include CITATION.cff
 include pyproject.toml
 include setup.py
+include jupyter-lite.json
+include jupyter_lite_config.py
 
 # Include the actual package
 recursive-include laserbeamsize *.py
