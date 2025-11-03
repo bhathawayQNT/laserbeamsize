@@ -8,10 +8,22 @@ PYTHON          := $(VENV)/bin/python
 PIP             := $(VENV)/bin/pip
 REQUIREMENTS    ?= requirements-dev.txt
 
+# ---- Deploy config (override on command line if desired) ----
+DEPLOY_HOST ?= omlc.org
+DEPLOY_USER ?= prahl
+DEPLOY_PATH ?= /var/www/omlc.org/html/lite/laserbeamsize/
+DEPLOY_URL  ?= https://omlc.org/lite/laserbeamsize/
+RSYNC_OPTS  ?= -avz --delete
+RSYNC_SSH   ?= ssh              # e.g., set to 'ssh -p 2222' if you use a custom port
+
 DOCS_DIR        := docs
 LITE_DIR        := lite
 HTML_DIR        := $(DOCS_DIR)/_build/html
 DOIT_DB         := .jupyterlite.doit.db
+
+BASE_URL        := /lite/laserbeamsize/
+HOST            := 127.0.0.1
+PORT            := 8000
 
 PYTEST          := $(VENV)/bin/pytest
 PYLINT          := $(VENV)/bin/pylint
@@ -178,14 +190,29 @@ run: lite-clean lite lite-serve
 
 .PHONY: lite-serve
 lite-serve: $(VENV)/.ready
-	@echo ">> Serving $(LITE_DIR) at http://127.0.0.1:8000"
-	$(PYTHON) -m http.server 8000 -d lite
+	@test -f "$(LITE_DIR)/index.html" || { echo "❌ $(LITE_DIR)/index.html not found. Run: make lite"; exit 1; }
+	@# Create a symlink so /lite/laserbeamsize/ maps to your built lite/
+	@mkdir -p "$(LITE_DIR)"
+	@[ -L "$(LITE_DIR)/laserbeamsize" ] || ( cd "$(LITE_DIR)" && ln -s . laserbeamsize )
+	@echo ">> Serving repo root at http://$(HOST):$(PORT) (symlink: $(LITE_DIR)/laserbeamsize -> .)"
+	@python3 -m http.server "$(PORT)" --bind "$(HOST)" --directory "$(PWD)" &
+	@sleep 1
+	@command -v open >/dev/null 2>&1 && open "http://$(HOST):$(PORT)/lite/laserbeamsize/" || true
+	@wait
 
 .PHONY: lite-clean
 lite-clean:
 	@echo ">> Cleaning $(LITE_DIR)"
 	@/bin/rm -rf "$(LITE_DIR)" "$(DOIT_DB)"
 	@/bin/rm -f build.log
+
+.PHONY: lite-deploy
+lite-deploy:
+	@test -f "$(LITE_DIR)/index.html" || { echo "❌ $(LITE_DIR)/index.html not found. Run: make lite"; exit 1; }
+	@echo ">> Deploying $(LITE_DIR)/ -> $(DEPLOY_USER)@$(DEPLOY_HOST):$(DEPLOY_PATH)"
+	rsync $(RSYNC_OPTS) -e "$(RSYNC_SSH)" "$(LITE_DIR)/" "$(DEPLOY_USER)@$(DEPLOY_HOST):$(DEPLOY_PATH)"
+	@echo ">> Opening $(DEPLOY_URL)"
+	@command -v open >/dev/null 2>&1 && open "$(DEPLOY_URL)" || echo "Open: $(DEPLOY_URL)"
 
 .PHONY: clean
 clean: ## Remove cache, build artifacts, docs output, and JupyterLite build (but keep config)
