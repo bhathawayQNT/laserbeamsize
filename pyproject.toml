@@ -79,12 +79,16 @@ pydocstyle.convention = "google"
 
 [tool.check-manifest]
 ignore = [
-    ".readthedocs.yaml",
-    "docs/*",
-    "Makefile",
-    "release.txt",
-    "requirements.txt",
-    "todo",
+  ".readthedocs.yaml",
+  ".yamllint",
+  "jupyter-lite.json",
+  "jupyter_lite_config.py",
+  "requirements-dev.txt",
+  "docs/*",
+  "Makefile",
+  "release.txt",
+  "requirements.txt",
+  "todo",
 ]
 
 [tool.pytest.ini_options]
