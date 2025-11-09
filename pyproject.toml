@@ -49,15 +49,22 @@ dependencies = [
 ]
 authors = [{name = "Scott Prahl", email = "scott.prahl@oit.edu"}]
 license = "MIT"
-urls = {Homepage = "https://github.com/scottprahl/laserbeamsize"}
 dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/scottprahl/laserbeamsize"
+Documentation = "https://github.com/scottprahl/laserbeamsize#readme"
+Source = "https://github.com/scottprahl/laserbeamsize"
+Tracker = "https://github.com/scottprahl/laserbeamsize/issues"
+Changelog = "https://github.com/scottprahl/laserbeamsize/blob/main/docs/CHANGELOG.rst"
+
 
 [tool.setuptools.dynamic]
 version = {attr = "laserbeamsize.__version__"}
 
 [tool.setuptools]
-packages = ["laserbeamsize"]
-
+include-package-data = true
+packages = { find = { where = ["."], include = ["laserbeamsize*"] } }
 [tool.ruff]
 line-length = 110
 
