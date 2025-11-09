@@ -1,6 +1,16 @@
 Changelog
 =========
 
+2.2.0
+-----
+* Jupyterlite support on github pages
+* fix circular imports
+* use venv for packaging and testing
+* remove legacy setup.py setup.sh
+* remove test files from packaging
+* clean up MANIFEST.IN
+* improve pyproject.toml
+
 2.1.0
 -----
 * make fixed angle work much better (thanks @przemororo)
