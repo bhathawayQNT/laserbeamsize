@@ -8,14 +8,9 @@ PYTHON          := $(VENV)/bin/python
 PIP             := $(VENV)/bin/pip
 REQUIREMENTS    ?= requirements-dev.txt
 
-# ---- Deploy config (override on command line if desired) ----
-DEPLOY_HOST ?= omlc.org
-DEPLOY_USER ?= prahl
-DEPLOY_PATH ?= /var/www/omlc.org/html/lite/laserbeamsize/
-DEPLOY_URL  ?= https://omlc.org/lite/laserbeamsize/
-RSYNC_OPTS  ?= -avz --delete
-RSYNC_SSH   ?= ssh              # e.g., set to 'ssh -p 2222' if you use a custom port
-
+REPO            := scottprahl/laserbeamsize
+SITE_BASE_URL   := /laserbeamsize/
+BUILD_APPS      := lab
 DOCS_DIR        := docs
 LITE_DIR        := lite
 HTML_DIR        := $(DOCS_DIR)/_build/html
@@ -173,16 +168,22 @@ rcheck: realclean ruff-check test lint rst-check html manifest-check pyroma-chec
 	@echo "✅ Release checks complete"
 
 .PHONY: lite
-lite: $(VENV)/.ready
-	@echo ">> Ensuring root jupyter-lite.json exists"
-	@if [ ! -f "jupyter-lite.json" ]; then echo "❌ Missing jupyter-lite.json in repo root"; exit 1; fi
+lite: $(VENV)/.ready jupyter-lite.json
 	@echo ">> Clearing doit cache (if present)"
 	@/bin/rm -f "$(DOIT_DB)"
-	@echo ">> Building JupyterLite from $(DOCS_DIR) -> $(LITE_DIR)"
+	@echo ">> Preparing notebook files"
+	@/bin/rm -rf .lite-temp
+	@mkdir -p .lite-temp
+	@cp docs/*.ipynb .lite-temp/ 2>/dev/null || true
+	@echo ">> Building JupyterLite $(LITE_DIR)/*.ipynb"
 	$(PYTHON) -m jupyter lite build \
 	  --apps lab \
-	  --contents "$(DOCS_DIR)" \
+	  --contents .lite-temp \
 	  --output-dir "$(LITE_DIR)"
+	@/bin/rm -rf .lite-temp
+	cp jupyter-lite.json "$(LITE_DIR)/jupyter-lite.json"
+	touch "$(LITE_DIR)/.nojekyll"
+	@echo "ok" > "$(LITE_DIR)/.built"
 	@echo "✅ Build complete -> $(LITE_DIR)"
 
 .PHONY: run
@@ -202,17 +203,42 @@ lite-serve: $(VENV)/.ready
 
 .PHONY: lite-clean
 lite-clean:
-	@echo ">> Cleaning $(LITE_DIR)"
-	@/bin/rm -rf "$(LITE_DIR)" "$(DOIT_DB)"
-	@/bin/rm -f build.log
+	@echo ">> Cleaning output and staging dirs"
+	@/bin/rm -rf "$(LITE_DIR)" .lite_contents
+	@/bin/rm -f "$(DOIT_DB)"
+	@if [ -d ".gh-pages" ]; then \
+	    git worktree remove .gh-pages; \
+	fi
+
+# .PHONY: lite-deploy
+# lite-deploy:
+# 	@test -f "$(LITE_DIR)/index.html" || { echo "❌ $(LITE_DIR)/index.html not found. Run: make lite"; exit 1; }
+# 	@echo ">> Deploying $(LITE_DIR)/ -> $(DEPLOY_USER)@$(DEPLOY_HOST):$(DEPLOY_PATH)"
+# 	rsync $(RSYNC_OPTS) -e "$(RSYNC_SSH)" "$(LITE_DIR)/" "$(DEPLOY_USER)@$(DEPLOY_HOST):$(DEPLOY_PATH)"
+# 	@echo ">> Opening $(DEPLOY_URL)"
+# 	@command -v open >/dev/null 2>&1 && open "$(DEPLOY_URL)" || echo "Open: $(DEPLOY_URL)"
 
 .PHONY: lite-deploy
-lite-deploy:
-	@test -f "$(LITE_DIR)/index.html" || { echo "❌ $(LITE_DIR)/index.html not found. Run: make lite"; exit 1; }
-	@echo ">> Deploying $(LITE_DIR)/ -> $(DEPLOY_USER)@$(DEPLOY_HOST):$(DEPLOY_PATH)"
-	rsync $(RSYNC_OPTS) -e "$(RSYNC_SSH)" "$(LITE_DIR)/" "$(DEPLOY_USER)@$(DEPLOY_HOST):$(DEPLOY_PATH)"
-	@echo ">> Opening $(DEPLOY_URL)"
-	@command -v open >/dev/null 2>&1 && open "$(DEPLOY_URL)" || echo "Open: $(DEPLOY_URL)"
+lite-deploy: lite
+	@echo ">> Publishing $(LITE_DIR) to github-pages"
+	# Create or reuse a worktree for gh-pages branch
+	@if ! git show-ref --verify --quiet refs/heads/gh-pages; then \
+	    git switch --orphan gh-pages && \
+	    git commit --allow-empty -m "Initial gh-pages commit" && \
+	    git switch -; \
+	fi
+	@if [ ! -d ".gh-pages" ]; then \
+	    git worktree add .gh-pages gh-pages; \
+	fi
+	# Copy the built site
+	rm -rf .gh-pages/*
+	cp -R $(LITE_DIR)/* .gh-pages/
+	# Commit and push changes
+	cd .gh-pages && \
+	    git add -A && \
+	    git commit -m "Deploy $$(date -u +'%Y-%m-%d %H:%M:%S UTC')" || true
+	cd .gh-pages && git push origin gh-pages
+	@echo "✅ Deployed to https://scottprahl.github.io/laserbeamsize/"
 
 .PHONY: clean
 clean: ## Remove cache, build artifacts, docs output, and JupyterLite build (but keep config)
