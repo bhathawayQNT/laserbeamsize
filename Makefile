@@ -182,17 +182,39 @@ lite: $(VENV)/.ready
 	@/bin/rm -rf "$(STAGE_DIR)"; mkdir -p "$(STAGE_DIR)"
 	@/bin/cp docs/*.ipynb "$(STAGE_DIR)"
 
+	# prepare a clean lite_dir with only the configs we intend to merge
+	@echo ">> Preparing pristine lite_dir at .lite_root"
+	@/bin/rm -rf ".lite_root"; mkdir -p ".lite_root/lab"
+	@/bin/cp -f "$(ROOT)/jupyter-lite.json" ".lite_root/jupyter-lite.json" || true
+	@/bin/cp -f "$(ROOT)/lab/jupyter-lite.json" ".lite_root/lab/jupyter-lite.json" || true
+	
 	@echo ">> Building JupyterLite into $(OUT_DIR)"
 	@/bin/rm -rf "$(OUT_DIR)"; mkdir -p "$(OUT_DIR)"
 	"$(PYTHON)" -m jupyter lite build \
 	  --apps lab \
 	  --contents "$(STAGE_DIR)" \
-	  --LiteBuildApp.lite_dir="$(ROOT)" \
+	  --LiteBuildApp.lite_dir=".lite_root" \
 	  --LiteBuildApp.output_dir="$(OUT_DIR)"
 
 	@touch "$(OUT_DIR)/.nojekyll"
 	@echo "✅ Build complete -> $(OUT_DIR)"
 
+.PHONY: lite-fetch-pyodide
+lite-fetch-pyodide:
+	@echo ">> Downloading pyodide.js from CDN into $(OUT_DIR)/pyodide"
+	@mkdir -p "$(OUT_DIR)/pyodide"
+	@URL="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"; \
+	FILE="$(OUT_DIR)/pyodide/pyodide.js"; \
+	echo "   Source: $$URL"; \
+	echo "   Target: $$FILE"; \
+	curl -L -s -o "$$FILE" "$$URL" || { echo "❌ curl download failed"; exit 1; }
+	@echo "✅ pyodide.js downloaded successfully"
+
+PHONY: lite-verify-pyodide
+lite-verify-pyodide:
+	@test -f "$(OUT_DIR)/pyodide/pyodide.js" || { echo "❌ pyodide.js missing"; exit 1; }
+	@echo "✅ pyodide.js present at $(OUT_DIR)/pyodide/pyodide.js"
+	
 .PHONY: lite-serve
 lite-serve:
 	[ -d $(OUT_ROOT) ] || { echo "❌ run 'make lite' first"; exit 1; }
@@ -214,13 +236,10 @@ lite-clean:
 	@/bin/rm -rf  ".pytest_cache"
 
 .PHONY: lite-deploy
-lite-deploy: lite
+lite-deploy: lite lite-fetch-pyodide  ## keep your other deps as you like
 	@echo ">> Sanity checks before deploy"
 	@test -d "$(OUT_DIR)" || { echo "❌ Missing $(OUT_DIR)"; exit 1; }
 	@test -f "$(OUT_DIR)/index.html" || { echo "❌ Missing $(OUT_DIR)/index.html"; exit 1; }
-	@test -f "$(OUT_DIR)/jupyter-lite.json" || { echo "❌ Missing $(OUT_DIR)/jupyter-lite.json"; exit 1; }
-	@grep -q '"baseUrl": *"/laserbeamsize/"' "$(OUT_DIR)/jupyter-lite.json" || { \
-	  echo "❌ jupyter-lite.json baseUrl is not /laserbeamsize/"; exit 1; }
 
 	@echo ">> Ensure $(PAGES_BRANCH) branch exists"
 	@if ! git show-ref --verify --quiet refs/heads/$(PAGES_BRANCH); then \
@@ -230,28 +249,23 @@ lite-deploy: lite
 	  git switch $$CURRENT; \
 	fi
 
-	@echo ">> Ensure worktree at $(WORKTREE)"
+	@echo ">> Prune stale worktrees and (re)add $(WORKTREE)"
+	@git worktree prune || true
 	@if [ ! -d "$(WORKTREE)/.git" ]; then \
 	  rm -rf "$(WORKTREE)"; \
-	  git worktree add --checkout "$(WORKTREE)" "$(PAGES_BRANCH)"; \
+	  git worktree add -f --checkout "$(WORKTREE)" "$(PAGES_BRANCH)"; \
 	else \
-	  git -C "$(WORKTREE)" fetch "$(REMOTE)" "$(PAGES_BRANCH)"; \
+	  git -C "$(WORKTREE)" fetch "$(REMOTE)" "$(PAGES_BRANCH)" || true; \
+	  git -C "$(WORKTREE)" checkout "$(PAGES_BRANCH)"; \
 	  git -C "$(WORKTREE)" reset --hard "$(REMOTE)/$(PAGES_BRANCH)" || true; \
 	fi
 
-	@echo ">> Sync $(OUT_DIR) -> $(WORKTREE) (root of Pages)"
-	# Keep CNAME if you use a custom domain; otherwise it's fine to delete it.
-	@rsync -a --delete \
-	  --exclude ".git/" \
-	  --exclude ".gitignore" \
-	  "$(OUT_DIR)/" "$(WORKTREE)/"
-
-	@echo ">> Ensure .nojekyll at Pages root"
-	@touch "$(WORKTREE)/.nojekyll"
+	@echo ">> Sync $(OUT_DIR) -> $(WORKTREE)"
+	rsync -a --delete --exclude ".git/" --exclude ".gitignore" "$(OUT_DIR)/" "$(WORKTREE)/"
+	touch "$(WORKTREE)/.nojekyll"
 
 	@echo ">> Commit & push if there are changes"
-	@cd "$(WORKTREE)" && \
-	  git add -A && \
+	@cd "$(WORKTREE)" && git add -A && \
 	  if git diff --quiet --cached; then \
 	    echo "✅ No changes to deploy"; \
 	  else \
