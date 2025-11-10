@@ -13,3 +13,9 @@ graft laserbeamsize
 # (Optional) keep tests out if they exist at repo root
 prune tests
 prune docs
+
+# Build and deployment directories
+prune _site
+prune .gh-pages
+prune .lite_src
+prune .lite_root

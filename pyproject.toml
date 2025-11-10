@@ -89,6 +89,14 @@ ignore = [
   "release.txt",
   "requirements.txt",
   "todo",
+  ".gh-pages",
+  ".gh-pages/*",
+  "_site",
+  "_site/*",
+  ".lite_src",
+  ".lite_src/*",
+  ".lite_root",
+  ".lite_root/*",
 ]
 
 [tool.pytest.ini_options]

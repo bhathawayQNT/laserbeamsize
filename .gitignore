@@ -13,3 +13,20 @@ docs/_build
 docs/api
 todo
 lite/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# JupyterLite build artifacts
+_site/
+.lite_src/
+.lite_root/
+.jupyterlite.doit.db
+
+# GitHub Pages deployment worktree
+.gh-pages/
+
+# Temporary files
+.tmp
