@@ -4,12 +4,14 @@ Changelog
 2.2.0
 -----
 * Jupyterlite support on github pages
-* fix circular imports
+* eliminate circular imports
 * use venv for packaging and testing
-* remove legacy setup.py setup.sh
-* remove test files from packaging
+* remove setup.py and setup.sh
+* no longer package test files
 * clean up MANIFEST.IN
 * improve pyproject.toml
+* improve README.rst
+* requirements-dev.txt is now complete
 
 2.1.0
 -----
