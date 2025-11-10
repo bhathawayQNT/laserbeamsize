@@ -14,7 +14,7 @@
    :target: https://zenodo.org/badge/latestdoi/107437651
    :alt: zenodo
    
-.. |license-badge| image:: https://img.shields.io/github/license/scottprahl/laserbeamsize?color=68CA66
+.. |license-badge| image:: https://img.shields.io/badge/license-MIT-68CA66
    :target: https://github.com/scottprahl/laserbeamsize/blob/main/LICENSE.txt
    :alt: License
 
