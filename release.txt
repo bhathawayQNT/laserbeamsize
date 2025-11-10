@@ -1,6 +1,6 @@
 Releasing a new version
 
-# consider regenerating images using docs/readme_images.ipynb
+# consider regenerating images using docs/images/readme_images.ipynb
 
 # check
   make rcheck
@@ -9,13 +9,18 @@ Releasing a new version
 # update the version in __init__.py
   git commit -m 'update version' laserbeamsize/__init__.py
 
-# update CHANGELOG.rst  `git shortlog 2.0.5..HEAD`
+# update CHANGELOG.rst  `git shortlog 2.1..HEAD`
   git commit -m 'update recent changes' CHANGELOG.rst
   git push
 
+# update jupyterlite pages on github
+  make lite-clean
+  make lite
+  make lite-deploy
+
 # create release tag on github
-  git tag 2.0.2
-  git push origin 2.0.2
+  git tag 2.2.0
+  git push origin 2.2.0
 
 # manually publish release at
   open https://github.com/scottprahl/laserbeamsize
