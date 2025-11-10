@@ -100,6 +100,7 @@ lite-deploy:
 	fi
 
 	@echo ">> Prune stale worktrees and (re)add $(WORKTREE)"
+	@git worktree remove "$(WORKTREE)" --force 2>/dev/null || true
 	@git worktree prune || true
 	@rm -rf "$(WORKTREE)"
 	@git worktree add "$(WORKTREE)" "$(PAGES_BRANCH)"
