@@ -1,5 +1,3 @@
-# MANIFEST.in
-
 # Ship core metadata
 include README.rst
 include CHANGELOG.rst
@@ -9,6 +7,12 @@ include pyproject.toml
 
 # Ship only the package source
 graft laserbeamsize
+
+# Exclude Python bytecode and cache files
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude *.so
+global-exclude .DS_Store
 
 # (Optional) keep tests out if they exist at repo root
 prune tests
