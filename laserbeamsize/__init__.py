@@ -10,7 +10,6 @@ using a single monochrome image. Details can be shown using::
     help(laserbeamsize.background)
     help(laserbeamsize.display)
     help(laserbeamsize.image_tools)
-    help(laserbeamsize.masks)
 
 Another module, `laserbeamsize.gaussian`, contains functions that find properties
 of a propagating Gaussian beam::
@@ -24,7 +23,7 @@ and other beam parameters from a sequence of images::
     help(laserbeamsize.m2_display)
 """
 
-__version__ = "2.1.0"
+__version__ = "2.2.0"
 __author__ = "Scott Prahl"
 __email__ = "scott.prahl@oit.edu"
 __copyright__ = "2017-25, Scott Prahl"
