@@ -34,13 +34,16 @@
    :target: https://github.com/psf/black
    :alt: code style: black
 
+.. |lite-badge| image:: https://img.shields.io/badge/try-JupyterLite-68CA66.svg
+   :target: https://scottprahl.github.io/laserbeamsize/
+   :alt: Try JupyterLite
 
 laserbeamsize
 =============
 
 by Scott Prahl
 
-|pypi-badge| |github-badge| |conda-badge| |zenodo-badge|
+|pypi-badge| |github-badge| |conda-badge| |zenodo-badge| |lite-badge|
 
 |license-badge| |test-badge| |docs-badge| |downloads-badge| |black-badge|
 
