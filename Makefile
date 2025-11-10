@@ -103,7 +103,7 @@ lite-deploy:
 	@git worktree prune || true
 	@rm -rf "$(WORKTREE)"
 	@git worktree add "$(WORKTREE)" "$(PAGES_BRANCH)"
-	@git -C "$(WORKTREE)" reset --hard "$(REMOTE)/$(PAGES_BRANCH)" 2>/dev/null || true
+	@git -C "$(WORKTREE)" pull "$(REMOTE)" "$(PAGES_BRANCH)" 2>/dev/null || true
 
 	@echo ">> Sync $(OUT_DIR) -> $(WORKTREE)"
 	rsync -a --delete --exclude ".git/" --exclude ".gitignore" "$(OUT_DIR)/" "$(WORKTREE)/"
@@ -113,12 +113,13 @@ lite-deploy:
 	@date -u +"%Y-%m-%d %H:%M:%S UTC" > "$(WORKTREE)/.pages-ping"
 
 	@echo ">> Commit & push if there are changes"
-	@cd "$(WORKTREE)" && git add -A && \
+	@cd "$(WORKTREE)" && \
+	  git add -A && \
 	  if git diff --quiet --cached; then \
 	    echo "✅ No changes to deploy"; \
 	  else \
 	    git commit -m "Deploy $$(date -u +'%Y-%m-%d %H:%M:%S UTC')" && \
-	    git push "$(REMOTE)" "$(PAGES_BRANCH)"; \
+	    git push "$(REMOTE)" "$(PAGES_BRANCH)" && \
 	    echo "✅ Deployed to https://$(GITHUB_USER).github.io/$(PACKAGE)/"; \
 	  fi
 
