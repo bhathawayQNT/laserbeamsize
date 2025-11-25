@@ -173,6 +173,11 @@ pyroma-check: $(VENV)/.ready
 rcheck: realclean ruff-check test lint rst-check html manifest-check pyroma-check note-check lite dist
 	@echo "✅ Release checks complete"
 
+.PHONY: lab
+lab:
+	@echo "==> Launching JupyterLab using venv ($(PYTHON))"
+	"$(PYTHON)" -m jupyter lab --ServerApp.root_dir="$(CURDIR)"
+
 .PHONY: lite
 lite: $(VENV)/.ready
 	@echo ">> Ensuring root jupyter-lite.json exists"; \
