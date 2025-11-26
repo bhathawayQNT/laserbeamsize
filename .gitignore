@@ -1,6 +1,6 @@
 .DS_Store
 *.pyc
-.tox
+.cache
 .eggs
 .jupyterlite.doit.db
 .venv/
@@ -13,6 +13,7 @@ docs/_build
 docs/api
 todo
 lite/
+problems/
 
 # Python bytecode
 __pycache__/
