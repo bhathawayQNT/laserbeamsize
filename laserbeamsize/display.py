@@ -34,6 +34,7 @@ A mosaic of images might be created by::
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 from .analysis import beam_size
 from .background import iso_background, subtract_iso_background
@@ -239,8 +240,12 @@ def plot_image_and_fit(
     v, h = image.shape
     extent = np.array([-xc, h - xc, v - yc, -yc]) * scale
 
+    # add gray to cmap around zero
+    ccmap = set_zero_to_lightgray(cmap, vmin, vmax)
+
     # display image and axes labels
-    im = plt.imshow(image, extent=extent, cmap=cmap, vmax=vmax, vmin=vmin)
+    im = plt.imshow(image, extent=extent, cmap=ccmap, vmax=vmax, vmin=vmin)
+    im.cmap.set_bad(color="black")  # color for padded values
     plt.xlabel(label)
     plt.ylabel(label)
 
@@ -266,6 +271,22 @@ def plot_image_and_fit(
         plt.colorbar(im, fraction=0.046 * v / h, pad=0.04)
 
     return xc * scale, yc * scale, d_major * scale, d_minor * scale, phi
+
+
+def set_zero_to_lightgray(cmap_name, min_val, max_val):
+    """Create a colormap where zero maps to gray."""
+    cmap = plt.get_cmap(cmap_name)
+    colors = cmap(np.linspace(0, 1, 256))
+
+    # index that corresponds to zero
+    idx = 0
+    if min_val < 0 <= max_val:
+        idx = int(256 * abs(min_val) / (max_val - min_val))
+
+    colors[idx] = [0.827, 0.827, 0.827, 1.0]
+    colors[idx] = [0.7, 0.7, 0.7, 1.0]
+
+    return mcolors.ListedColormap(colors)
 
 
 def plot_image_analysis(
@@ -369,9 +390,13 @@ def plot_image_analysis(
     plt.subplots(2, 2, figsize=(12, 12))
     plt.subplots_adjust(right=1.0)
 
+    # add gray to cmap around zero
+    ccmap = set_zero_to_lightgray(cmap, min_, max_)
+
     # original image
     plt.subplot(2, 2, 1)
-    im = plt.imshow(image, cmap=cmap)
+    im = plt.imshow(image, cmap=ccmap)
+    im.cmap.set_bad(color="black")  # color for padded values
     plt.colorbar(im, fraction=0.046 * v_s / h_s, pad=0.04)
     plt.clim(min_, max_)
     plt.xlabel("Position (pixels)")
@@ -381,7 +406,8 @@ def plot_image_analysis(
     # working image
     plt.subplot(2, 2, 2)
     extent = np.array([-xc_s, h_s - xc_s, v_s - yc_s, -yc_s])
-    im = plt.imshow(working_image, extent=extent, cmap=cmap)
+    im = plt.imshow(working_image, extent=extent, cmap=ccmap)
+    im.cmap.set_bad(color="black")  # color for padded values
     xp, yp = ellipse_arrays(xc, yc, d_major, d_minor, phi) * scale
     plot_visible_dotted_line(xp - xc_s, yp - yc_s)
 
@@ -400,42 +426,54 @@ def plot_image_analysis(
     plt.title("Image w/o background, center at (%.0f, %.0f) %s" % (xc_s, yc_s, units))
 
     # calculate gaussian fit
-    _, _, z_major, s_major = major_axis_arrays(image, xc, yc, d_major, d_minor, phi)
+    diameters = kwargs.get("max_diameters", 3)  # default to ISO default of 3 if not present
+    _, _, z_major, s_major = major_axis_arrays(image, xc, yc, d_major, d_minor, phi, diameters)
     a_major = np.sqrt(2 / np.pi) / r_major * abs(np.sum(z_major - bkgnd) * (s_major[1] - s_major[0]))
 
-    _, _, z_minor, s_minor = minor_axis_arrays(image, xc, yc, d_major, d_minor, phi)
+    _, _, z_minor, s_minor = minor_axis_arrays(image, xc, yc, d_major, d_minor, phi, diameters)
     a_minor = np.sqrt(2 / np.pi) / r_minor * abs(np.sum(z_minor - bkgnd) * (s_minor[1] - s_minor[0]))
 
+    # find max and min for both plots so that both plots have equal units
+    extra = 1.03
+    x_min = min(np.min(s_minor), np.min(s_major)) * scale
+    x_max = max(np.max(s_minor), np.max(s_major)) * scale
+
+    baseline = max(a_minor, a_major) * np.exp(-2 * (diameters / 2) ** 2) + bkgnd
+    base_e2 = max(a_minor, a_major) * np.exp(-2) + bkgnd
+    y_min = min(a_minor, a_major) * extra + baseline
+    y_max = max(a_minor, a_major) * extra + baseline
+
+    y_min = np.min([y_min, 0, np.min(z_major), np.min(z_minor)])
+    y_max = np.max([y_max, np.max(z_major) * extra, np.max(z_minor) * extra])
+
     # plot of values along major axis
-    baseline = a_major * np.exp(-2) + bkgnd
     plt.subplot(2, 2, 3)
     plt.plot(s_major * scale, z_major, "sb", markersize=2)
     plt.plot(s_major * scale, z_major, "-b", lw=0.5)
     z_values = bkgnd + a_major * np.exp(-2 * (s_major / r_major) ** 2)
     plt.plot(s_major * scale, z_values, "k")
-    plt.annotate("", (-r_mag_s, baseline), (r_mag_s, baseline), arrowprops={"arrowstyle": "<->"})
-    plt.text(0, 1.1 * baseline, "d_major=%.0f %s_major" % (d_mag_s, units), va="bottom", ha="center")
+    plt.annotate("", (-r_mag_s, base_e2), (r_mag_s, base_e2), arrowprops={"arrowstyle": "<->"})
+    plt.text(0, 1.1 * base_e2, "d_major=%.0f %s" % (d_mag_s, units), va="bottom", ha="center")
     plt.text(0, bkgnd + a_major, "  Gaussian Fit")
     plt.xlabel("Distance from Center [%s]" % units)
     plt.ylabel("Pixel Intensity Along Major Axis")
     plt.title("Major Axis")
-    plt.ylim(0, max(a_major, a_minor) * 1.05 + baseline)
+    plt.ylim(y_min, y_max)
     plt.xlim(min(s_major) * scale, max(s_major) * scale)
 
     # plot of values along minor axis
-    baseline = a_minor * np.exp(-2) + bkgnd
     plt.subplot(2, 2, 4)
     plt.plot(s_minor * scale, z_minor, "sb", markersize=2)
     plt.plot(s_minor * scale, z_minor, "-b", lw=0.5)
     z_values = bkgnd + a_minor * np.exp(-2 * (s_minor / r_minor) ** 2)
     plt.plot(s_minor * scale, z_values, "k")
-    plt.annotate("", (-r_min_s, baseline), (r_min_s, baseline), arrowprops={"arrowstyle": "<->"})
-    plt.text(0, 1.1 * baseline, "d_minor=%.0f %s" % (d_min_s, units), va="bottom", ha="center")
+    plt.annotate("", (-r_min_s, base_e2), (r_min_s, base_e2), arrowprops={"arrowstyle": "<->"})
+    plt.text(0, 1.1 * base_e2, "d_minor=%.0f %s" % (d_min_s, units), va="bottom", ha="center")
     plt.text(0, bkgnd + a_minor, "  Gaussian Fit")
     plt.xlabel("Distance from Center [%s]" % units)
     plt.ylabel("Pixel Intensity Along Minor Axis")
     plt.title("Minor Axis")
-    plt.ylim(0, max(a_major, a_minor) * 1.05 + baseline)
+    plt.ylim(y_min, y_max)
     plt.xlim(min(s_major) * scale, max(s_major) * scale)
     # plt.gca().set_ylim(bottom=0)
 
@@ -501,7 +539,7 @@ def plot_image_montage(
 
     # when pixel_size is not specified, units default to pixels
     if pixel_size is None:
-        units = "pixels"
+        units = "px"
 
     # gather all the options that are fixed for every image in the montage
     options = {

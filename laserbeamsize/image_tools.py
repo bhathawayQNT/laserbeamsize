@@ -421,7 +421,7 @@ def create_test_image(h, v, xc, yc, d_major, d_minor, phi, noise=0, ntype="poiss
     return image1
 
 
-def crop_image_to_rect(image, xc, yc, xmin, xmax, ymin, ymax):
+def crop_image_to_rect2(image, xc, yc, xmin, xmax, ymin, ymax):
     """
     Return image cropped to specified rectangle.
 
@@ -446,6 +446,90 @@ def crop_image_to_rect(image, xc, yc, xmin, xmax, ymin, ymax):
     new_xc = xc - xmin
     new_yc = yc - ymin
     return image[ymin:ymax, xmin:xmax], new_xc, new_yc
+
+
+def crop_image_to_rect(image, xc, yc, xmin, xmax, ymin, ymax):
+    """
+    Return image cropped to specified rectangle.
+
+    If the crop rectangle exceeds the image bounds, the returned image
+    is padded with zeros to match the requested size, and those padded
+    regions are masked.
+
+    Args:
+        image: image of beam
+        xc: horizontal center of beam
+        yc: vertical center of beam
+        xmin: left edge (pixels)
+        xmax: right edge (pixels)
+        ymin: top edge (pixels)
+        ymax: bottom edge (pixels)
+    Returns:
+        cropped_image: cropped masked array (None if resulting crop is too small)
+        new_xc, new_yc: new beam center (pixels, None if crop is too small)
+    """
+    import numpy.ma as ma
+
+    v, h = image.shape
+
+    # Convert to integers
+    xmin_req = int(xmin)
+    xmax_req = int(xmax)
+    ymin_req = int(ymin)
+    ymax_req = int(ymax)
+
+    # Calculate the requested crop size
+    crop_height = ymax_req - ymin_req
+    crop_width = xmax_req - xmin_req
+
+    # Check if crop is too small (e.g., less than 3x3 pixels)
+    if crop_height < 3 or crop_width < 3:
+        return None, None, None
+
+    # Determine valid region within image bounds
+    xmin_valid = max(0, xmin_req)
+    xmax_valid = min(h, xmax_req)
+    ymin_valid = max(0, ymin_req)
+    ymax_valid = min(v, ymax_req)
+
+    # Check if there's any overlap with the original image
+    if xmin_valid >= xmax_valid or ymin_valid >= ymax_valid:
+        return None, None, None
+
+    # Extract the valid portion of the image
+    cropped = image[ymin_valid:ymax_valid, xmin_valid:xmax_valid]
+
+    # Create mask array (True = masked/padded, False = valid data)
+    mask = np.zeros((crop_height, crop_width), dtype=bool)
+
+    # If crop extends beyond image, pad with zeros and set mask
+    if xmin_req < 0 or xmax_req > h or ymin_req < 0 or ymax_req > v:
+        # Create zero-padded array
+        padded = np.zeros((crop_height, crop_width), dtype=image.dtype)
+
+        # Calculate where to place the cropped image in the padded array
+        pad_ymin = max(0, -ymin_req)
+        pad_xmin = max(0, -xmin_req)
+        pad_ymax = pad_ymin + (ymax_valid - ymin_valid)
+        pad_xmax = pad_xmin + (xmax_valid - xmin_valid)
+
+        # Place cropped image into padded array
+        padded[pad_ymin:pad_ymax, pad_xmin:pad_xmax] = cropped
+
+        # Set mask to True everywhere except where we have valid data
+        mask[:, :] = True
+        mask[pad_ymin:pad_ymax, pad_xmin:pad_xmax] = False
+
+        cropped = padded
+
+    # Create masked array
+    cropped_masked = ma.masked_array(cropped, mask=mask)
+
+    # Calculate new center coordinates
+    new_xc = xc - xmin_req
+    new_yc = yc - ymin_req
+
+    return cropped_masked, new_xc, new_yc
 
 
 def crop_image_to_integration_rect(image, xc, yc, d_major, d_minor, phi):
