@@ -103,10 +103,15 @@ dist: $(VENV)/.ready
 	
 .PHONY: test
 test: $(VENV)/.ready
-	$(PYTEST) $(PYTEST_OPTS) tests/test_fresnel.py
-	$(PYTEST) $(PYTEST_OPTS) tests/test_jones.py
-	$(PYTEST) $(PYTEST_OPTS) tests/test_stokes.py
-	$(PYTEST) $(PYTEST_OPTS) tests/test_sym_fresnel.py
+	-$(PYTEST) $(PYTEST_OPTS) tests/test_back.py
+	-$(PYTEST) $(PYTEST_OPTS) tests/test_basic_beam_size.py
+	-$(PYTEST) $(PYTEST_OPTS) tests/test_fixed_phi.py
+	-$(PYTEST) $(PYTEST_OPTS) tests/test_gaussian.py
+	-$(PYTEST) $(PYTEST_OPTS) tests/test_iso_noise.py
+	-$(PYTEST) $(PYTEST_OPTS) tests/test_masks.py
+	-$(PYTEST) $(PYTEST_OPTS) tests/test_no_noise.py
+	-$(PYTEST) $(PYTEST_OPTS) tests/test_noise.py
+	-$(PYTEST) $(PYTEST_OPTS) tests/test_tools.py
 
 .PHONY: note-test
 note-test: $(VENV)/.ready

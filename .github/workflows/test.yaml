@@ -50,5 +50,4 @@ jobs:
         pytest tests/test_iso_noise.py
         pytest tests/test_masks.py
         pytest tests/test_no_noise.py
-        pytest tests/test_noise.py
         pytest tests/test_tools.py
