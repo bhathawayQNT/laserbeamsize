@@ -1,25 +1,7 @@
-# Ship core metadata
+# Core package files
+include LICENSE.txt
 include README.rst
 include CHANGELOG.rst
-include LICENSE.txt
 include CITATION.cff
-include pyproject.toml
 
-# Ship only the package source
-graft laserbeamsize
-
-# Exclude Python bytecode and cache files
-global-exclude __pycache__
-global-exclude *.py[cod]
-global-exclude *.so
-global-exclude .DS_Store
-
-# (Optional) keep tests out if they exist at repo root
-prune tests
-prune docs
-
-# Build and deployment directories
-prune _site
-prune .gh-pages
-prune .lite_src
-prune .lite_root
+recursive-include tests *.py
