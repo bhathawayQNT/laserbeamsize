@@ -22,6 +22,7 @@ Finding the center and diameters of a beam in a monochrome image is simple::
     >>> print("The major axis of the ellipse is rotated %.0f° ccw from the horizontal" % (phi * 180/3.1416))
 """
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 from .background import subtract_iso_background, rotated_rect_mask
@@ -30,6 +31,7 @@ from .image_tools import rotate_image
 __all__ = (
     "basic_beam_size",
     "beam_size",
+    "basic_beam_size_naive",
 )
 
 
@@ -50,7 +52,6 @@ def basic_beam_size(original, phi_fixed=None):
     Determine the beam center, diameters, and tilt using ISO 11146 standard.
 
     Find the center and sizes of an elliptical spot in an 2D array.
-
     The function does nothing to eliminate background noise.  It just finds the first
     and second order moments and returns the beam parameters. Consequently
     a beam spot in an image with a constant background will fail badly.
@@ -64,8 +65,11 @@ def basic_beam_size(original, phi_fixed=None):
     ellipse is found.  If phi_fixed is specified, then an ellipse is rotated to
     that angle and fitted to the image.
 
+    If the input is a masked array, masked pixels are treated as having zero
+    weight in the moment calculations.
+
     Args:
-        original: 2D array of image with beam spot
+        original: 2D array of image with beam spot (may be masked array)
         phi_fixed: angle that major axis of ellipse makes with horizontal [radians]
 
     Returns:
@@ -75,7 +79,11 @@ def basic_beam_size(original, phi_fixed=None):
         d_minor: minor axis (i.e, minor diameter)
         phi: angle between major axis and horizontal [radians]
     """
-    image = original.astype(float)
+    if np.ma.is_masked(original):  # convert masked values to zero
+        image = np.ma.filled(original, 0).astype(float)
+    else:
+        image = original.astype(float)
+
     v, h = image.shape
 
     # total of all pixels
@@ -93,6 +101,10 @@ def basic_beam_size(original, phi_fixed=None):
 
     if phi_fixed is not None:
         image = rotate_image(image, xc, yc, -phi_fixed)
+        # Recalculate centroid after rotation
+        p = np.sum(image, dtype=float)
+        xc = np.sum(np.dot(image, hh)) / p
+        yc = np.sum(np.dot(image.T, vv)) / p
 
     # find the variances
     hs = hh - xc
@@ -104,28 +116,20 @@ def basic_beam_size(original, phi_fixed=None):
     if phi_fixed is None:
         xy = np.dot(np.dot(image.T, vs), hs) / p
 
-    # Ensure that the case xx==yy is handled correctly
-    if xx == yy:
-        disc = np.abs(2 * xy)
-        phi_ = np.sign(xy) * np.pi / 4
-    else:
-        diff = xx - yy
-        disc = np.sign(diff) * np.sqrt(diff**2 + 4 * xy**2)
-        phi_ = 0.5 * np.arctan2(2 * xy, diff)
+    diff = xx - yy
+    disc = np.sqrt(diff**2 + 4 * xy**2)
+    phi_ = 0.5 * np.arctan2(2 * xy, diff)
 
-    d_major = 1
-    d_minor = 1
-    if xx + yy + disc > 0:  # fails when negative noise dominates
-        d_major = np.sqrt(8 * (xx + yy + disc))
+    d_major = np.sqrt(max(0, 8 * (xx + yy + disc)))
 
     if xx + yy - disc > 0:
         d_minor = np.sqrt(8 * (xx + yy - disc))
+    else:
+        d_minor = None
 
     if phi_fixed is None:
         phi_ *= -1  # negative because y=0 is at the top
         phi_ = wrap_phi(phi_)
-        if d_minor > d_major:
-            d_major, d_minor = d_minor, d_major
     else:
         phi_ = phi_fixed
 
@@ -225,8 +229,13 @@ def beam_size(
         # save current beam properties for later comparison
         xc2, yc2, dx2, dy2 = xc, yc, d_major, d_minor
 
+        if d_minor is None:
+            return xc2, yc2, dx2, dy2, phi_
+
         # create a mask so only values within the mask are used
-        mask = rotated_rect_mask(image, xc, yc, d_major, d_minor, phi_, mask_diameters)
+        rect_major = mask_diameters * d_major
+        rect_minor = mask_diameters * d_minor
+        mask = rotated_rect_mask(image, xc, yc, rect_major, rect_minor, -phi_)
         masked_image = np.copy(image_no_bkgnd)
 
         # zero values outside mask (rotation allows mask pixels to differ from 0 or 1)
@@ -269,9 +278,9 @@ def basic_beam_size_naive(image):
     yc = 0.0
     for i in range(v):
         for j in range(h):
-            p += image[i, j]
-            xc += image[i, j] * j
-            yc += image[i, j] * i
+            p += float(image[i, j])
+            xc += float(image[i, j]) * j
+            yc += float(image[i, j]) * i
     xc /= p
     yc /= p
 
@@ -288,8 +297,8 @@ def basic_beam_size_naive(image):
     xy /= p
     yy /= p
 
-    d_major = 2 * np.sqrt(2) * np.sqrt(xx + yy + np.sign(xx - yy) * np.sqrt((xx - yy) ** 2 + 4 * xy**2))
-    d_minor = 2 * np.sqrt(2) * np.sqrt(xx + yy - np.sign(xx - yy) * np.sqrt((xx - yy) ** 2 + 4 * xy**2))
-    phi = 2 * np.arctan2(2 * xy, xx - yy)
+    d_major = np.sqrt(8) * np.sqrt(xx + yy + np.sign(xx - yy) * np.sqrt((xx - yy) ** 2 + 4 * xy**2))
+    d_minor = np.sqrt(8) * np.sqrt(xx + yy - np.sign(xx - yy) * np.sqrt((xx - yy) ** 2 + 4 * xy**2))
+    phi = 0.5 * np.arctan2(2 * xy, xx - yy)
 
     return xc, yc, d_major, d_minor, phi
