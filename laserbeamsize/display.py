@@ -83,7 +83,7 @@ def beam_ellipticity(d_major, d_minor):
 
 def plot_beam_diagram():
     """Draw a simple astigmatic beam ellipse with labels."""
-    theta = np.radians(30)
+    phi = np.radians(30)
     xc, yc, d_major, d_minor = 0, 0, 50, 25
 
     plt.subplots(1, 1, figsize=(6, 6))
@@ -92,14 +92,18 @@ def plot_beam_diagram():
     # will not appear to be orthogonal to each other!
     plt.axes().set_aspect("equal")
 
-    xp, yp = ellipse_arrays(xc, yc, d_major, d_minor, theta)
+    xp, yp = ellipse_arrays(xc, yc, d_major, d_minor, phi)
     plt.plot(xp, yp, "k", lw=2)
 
-    xp, yp = rotated_rect_arrays(xc, yc, d_major, d_minor, theta)
+    scale = 1
+    diameters = 3
+    rect_major = d_major * diameters
+    rect_minor = d_major * diameters
+    xp, yp = rotated_rect_arrays(xc, yc, rect_major, rect_minor, phi) * scale
     plt.plot(xp, yp, ":b", lw=2)
 
-    sint = np.sin(theta) / 2
-    cost = np.cos(theta) / 2
+    sint = np.sin(phi) / 2
+    cost = np.cos(phi) / 2
     plt.plot([xc - d_major * cost, xc + d_major * cost], [yc + d_major * sint, yc - d_major * sint], ":b")
     plt.plot([xc + d_minor * sint, xc - d_minor * sint], [yc + d_minor * cost, yc - d_minor * cost], ":r")
 
@@ -140,8 +144,154 @@ def plot_beam_diagram():
 
 def plot_visible_dotted_line(xpts, ypts):
     """Draw a dotted line that is is visible against images."""
-    plt.plot(xpts, ypts, "-", color="#FFD700")
-    plt.plot(xpts, ypts, ":", color="#0057B8")
+    # White solid line underneath
+    plt.plot(xpts, ypts, color="white", linewidth=2, solid_capstyle="round")
+    # Black dashes on top
+    plt.plot(xpts, ypts, color="black", linewidth=2, linestyle=(0, (1, 1)), solid_capstyle="round")
+
+
+def set_zero_to_lightgray(cmap_name, min_val, max_val):
+    """Create a colormap where zero maps to gray."""
+    cmap = plt.get_cmap(cmap_name)
+    colors = cmap(np.linspace(0, 1, 256))
+
+    # index that corresponds to zero
+    idx = 0
+    if min_val < 0 <= max_val:
+        idx = int(256 * abs(min_val) / (max_val - min_val))
+
+    colors[idx] = [0.827, 0.827, 0.827, 1.0]
+    colors[idx] = [0.7, 0.7, 0.7, 1.0]
+
+    return mcolors.ListedColormap(colors)
+
+
+def _prepare_beam_analysis(image, corner_fraction, nT, iso_noise, **kwargs):
+    """
+    Common setup for beam analysis: extract beam_size parameters and calculate beam properties.
+
+    Args:
+        image: 2D array of image with beam spot
+        corner_fraction: the fractional size of corner rectangles
+        nT: how many standard deviations to subtract
+        iso_noise: if True then allow negative pixel values
+        **kwargs: extra options to pass to beam_size()
+
+    Returns:
+        tuple: (diameters, beam_size_args, xc_px, yc_px, d_major_px, d_minor_px, phi)
+    """
+    diameters = kwargs.get("mask_diameters", 3)
+
+    # only pass along arguments that apply to beam_size()
+    beamsize_keys = ["mask_diameters", "max_iter", "phi_fixed"]
+    bs_args = dict((k, kwargs[k]) for k in beamsize_keys if k in kwargs)
+    bs_args["iso_noise"] = iso_noise
+    bs_args["nT"] = nT
+    bs_args["corner_fraction"] = corner_fraction
+
+    # find center and diameters (all in pixels)
+    xc_px, yc_px, d_major_px, d_minor_px, phi = beam_size(image, **bs_args)
+
+    return diameters, xc_px, yc_px, d_major_px, d_minor_px, phi
+
+
+def _setup_scale_and_labels(pixel_size, units, for_analysis=False):
+    """
+    Determine scaling factor and axis labels.
+
+    Args:
+        pixel_size: size of pixels (None for pixel units)
+        units: string for physical units
+        for_analysis: if True, use format for plot_image_analysis
+
+    Returns:
+        tuple: (scale, label, units_str)
+    """
+    if pixel_size is None:
+        scale = 1
+        if for_analysis:
+            label = "Pixels from Center"
+            units_str = "pixels"
+        else:
+            label = "Pixels"
+            units_str = units
+    else:
+        scale = pixel_size
+        if for_analysis:
+            label = "Distance from Center [%s]" % units
+            units_str = units
+        else:
+            label = "Position (%s)" % units
+            units_str = units
+
+    return scale, label, units_str
+
+
+def _crop_image_if_needed(o_image, xc_px, yc_px, d_major_px, d_minor_px, phi, crop, scale, diameters):
+    """
+    Crop the image according to the crop parameter.
+
+    Args:
+        o_image: original image
+        xc_px: beam center coordinates (in pixels)
+        yc_px: beam center coordinates (in pixels)
+        d_major_px: major beam diameter (in pixels)
+        d_minor_px: minor beam diameter (in pixels)
+        phi: angle tilt (in radians)
+        crop: cropping specification (False, True, or [v, h] list)
+        scale: pixel scaling factor
+        diameters: number of diameters for integration rectangle
+
+    Returns:
+        tuple: (cropped_image, new_xc_px, new_yc_px)
+    """
+    if isinstance(crop, list):
+        ymin = yc_px - crop[0] / 2 / scale
+        ymax = yc_px + crop[0] / 2 / scale
+        xmin = xc_px - crop[1] / 2 / scale
+        xmax = xc_px + crop[1] / 2 / scale
+        return crop_image_to_rect(o_image, xc_px, yc_px, xmin, xmax, ymin, ymax)
+
+    if crop:
+        return crop_image_to_integration_rect(o_image, xc_px, yc_px, d_major_px, d_minor_px, phi, diameters)
+
+    return o_image, xc_px, yc_px
+
+
+def _draw_beam_overlays(xc_px, yc_px, d_major_px, d_minor_px, phi, diameters, scale):
+    """
+    Draw ellipse, axes, and integration rectangle on current plot.
+
+    Args:
+        xc_px: beam center coordinates (in pixels)
+        yc_px: beam center coordinates (in pixels)
+        d_major_px: major beam diameter (in pixels)
+        d_minor_px: minor beam diameter (in pixels)
+        phi: angle tilt (in radians)
+        diameters: number of diameters for integration rectangle
+        scale: pixel scaling factor
+    """
+    # Calculate rectangle dimensions (in pixels)
+    rect_minor_px = None
+    rect_major_px = d_major_px * diameters - 0.5
+
+    if d_minor_px is not None:
+        rect_minor_px = d_minor_px * diameters - 0.5
+
+        # Draw ellipse around beam
+        xp_px, yp_px = ellipse_arrays(xc_px, yc_px, d_major_px, d_minor_px, phi)
+        plot_visible_dotted_line((xp_px - xc_px) * scale, (yp_px - yc_px) * scale)
+
+        # Draw integration rectangle around beam
+        xp_px, yp_px = rotated_rect_arrays(xc_px - 0.5, yc_px - 0.5, rect_major_px, rect_minor_px, phi)
+        plot_visible_dotted_line((xp_px - xc_px) * scale, (yp_px - yc_px) * scale)
+
+    # major and minor axes
+    xp1_px, yp1_px, xp2_px, yp2_px = axes_arrays(xc_px, yc_px, rect_major_px, rect_minor_px, phi)
+
+    plot_visible_dotted_line((xp1_px - xc_px) * scale, (yp1_px - yc_px) * scale)
+    if d_minor_px is not None:
+        plot_visible_dotted_line((xp2_px - xc_px) * scale, (yp2_px - yc_px) * scale)
 
 
 def plot_image_and_fit(
@@ -200,35 +350,18 @@ def plot_image_and_fit(
         d_minor: minor axis (i.e, minor diameter)
         phi: angle between major axis and horizontal axis [radians]
     """
-    # only pass along arguments that apply to beam_size()
-    beamsize_keys = ["mask_diameters", "max_iter", "phi_fixed"]
-    bs_args = dict((k, kwargs[k]) for k in beamsize_keys if k in kwargs)
-    bs_args["iso_noise"] = iso_noise
-    bs_args["nT"] = nT
-    bs_args["corner_fraction"] = corner_fraction
+    # Common beam analysis setup
+    diameters, xc_px, yc_px, d_major_px, d_minor_px, phi = _prepare_beam_analysis(
+        o_image, corner_fraction, nT, iso_noise, **kwargs
+    )
 
-    # find center and diameters
-    xc, yc, d_major, d_minor, phi = beam_size(o_image, **bs_args)
+    # Setup scale and labels
+    scale, label, _ = _setup_scale_and_labels(pixel_size, units, for_analysis=False)
 
-    # establish scale and correct label
-    if pixel_size is None:
-        scale = 1
-        label = "Pixels"
-    else:
-        scale = pixel_size
-        label = "Position (%s)" % units
-
-    # crop image if necessary
-    if isinstance(crop, list):
-        ymin = yc - crop[0] / 2 / scale  # in pixels
-        ymax = yc + crop[0] / 2 / scale
-        xmin = xc - crop[1] / 2 / scale
-        xmax = xc + crop[1] / 2 / scale
-        image, xc, yc = crop_image_to_rect(o_image, xc, yc, xmin, xmax, ymin, ymax)
-    elif crop:
-        image, xc, yc = crop_image_to_integration_rect(o_image, xc, yc, d_major, d_minor, phi)
-    else:
-        image = o_image
+    # Crop image if necessary
+    image, xc_px, yc_px = _crop_image_if_needed(
+        o_image, xc_px, yc_px, d_major_px, d_minor_px, phi, crop, scale, diameters
+    )
 
     # establish maximum colorbar value
     if vmax is None:
@@ -237,8 +370,8 @@ def plot_image_and_fit(
         vmin = image.min()
 
     # extents may be changed by scale
-    v, h = image.shape
-    extent = np.array([-xc, h - xc, v - yc, -yc]) * scale
+    v_px, h_px = image.shape
+    extent = np.array([-xc_px, h_px - xc_px, v_px - yc_px, -yc_px]) * scale
 
     # add gray to cmap around zero
     ccmap = set_zero_to_lightgray(cmap, vmin, vmax)
@@ -249,44 +382,24 @@ def plot_image_and_fit(
     plt.xlabel(label)
     plt.ylabel(label)
 
-    # draw major and minor axes
-    xp, yp = axes_arrays(xc, yc, d_major, d_minor, phi)
-    plot_visible_dotted_line((xp - xc) * scale, (yp - yc) * scale)
-
-    # show ellipse around beam
-    xp, yp = ellipse_arrays(xc, yc, d_major, d_minor, phi)
-    plot_visible_dotted_line((xp - xc) * scale, (yp - yc) * scale)
-
-    # show integration area around beam
-    xp, yp = rotated_rect_arrays(xc, yc, d_major, d_minor, phi)
-    plot_visible_dotted_line((xp - xc) * scale, (yp - yc) * scale)
+    # Draw beam overlays (ellipse, axes, integration rectangle)
+    _draw_beam_overlays(xc_px, yc_px, d_major_px, d_minor_px, phi, diameters, scale)
 
     # set limits on axes
-    plt.xlim(-xc * scale, (h - xc) * scale)
-    plt.ylim((v - yc) * scale, -yc * scale)
+    plt.xlim(-xc_px * scale, (h_px - xc_px) * scale)
+    plt.ylim((v_px - yc_px) * scale, -yc_px * scale)
 
     # show colorbar
     if colorbar:
-        v, h = image.shape
-        plt.colorbar(im, fraction=0.046 * v / h, pad=0.04)
+        v_px, h_px = image.shape
+        plt.colorbar(im, fraction=0.046 * v_px / h_px, pad=0.04)
 
-    return xc * scale, yc * scale, d_major * scale, d_minor * scale, phi
+    if d_minor_px is not None:
+        ds = d_minor_px * scale
+    else:
+        ds = None
 
-
-def set_zero_to_lightgray(cmap_name, min_val, max_val):
-    """Create a colormap where zero maps to gray."""
-    cmap = plt.get_cmap(cmap_name)
-    colors = cmap(np.linspace(0, 1, 256))
-
-    # index that corresponds to zero
-    idx = 0
-    if min_val < 0 <= max_val:
-        idx = int(256 * abs(min_val) / (max_val - min_val))
-
-    colors[idx] = [0.827, 0.827, 0.827, 1.0]
-    colors[idx] = [0.7, 0.7, 0.7, 1.0]
-
-    return mcolors.ListedColormap(colors)
+    return xc_px * scale, yc_px * scale, d_major_px * scale, ds, phi
 
 
 def plot_image_analysis(
@@ -331,37 +444,19 @@ def plot_image_analysis(
     Returns:
         nothing
     """
-    # only pass along arguments that apply to beam_size()
-    bs_args = dict((k, kwargs[k]) for k in ["mask_diameters", "max_iter", "phi_fixed"] if k in kwargs)
-    bs_args["iso_noise"] = iso_noise
-    bs_args["nT"] = nT
-    bs_args["corner_fraction"] = corner_fraction
+    # Common beam analysis setup
+    diameters, xc_px, yc_px, d_major_px, d_minor_px, phi = _prepare_beam_analysis(
+        o_image, corner_fraction, nT, iso_noise, **kwargs
+    )
 
-    # find center and diameters
-    xc, yc, d_major, d_minor, phi = beam_size(o_image, **bs_args)
+    # Setup scale and labels
+    scale, label, units_str = _setup_scale_and_labels(pixel_size, units, for_analysis=True)
+    units_str = "px" if pixel_size is None else "[%s]" % units_str
 
-    # determine scaling and labels
-    if pixel_size is None:
-        scale = 1
-        unit_str = ""
-        units = "pixels"
-        label = "Pixels from Center"
-    else:
-        scale = pixel_size
-        unit_str = "[%s]" % units
-        label = "Distance from Center %s" % unit_str
-
-    # crop image as appropriate
-    if isinstance(crop, list):
-        ymin = yc - crop[0] / 2 / scale  # in pixels
-        ymax = yc + crop[0] / 2 / scale
-        xmin = xc - crop[1] / 2 / scale
-        xmax = xc + crop[1] / 2 / scale
-        image, xc, yc = crop_image_to_rect(o_image, xc, yc, xmin, xmax, ymin, ymax)
-    elif crop:
-        image, xc, yc = crop_image_to_integration_rect(o_image, xc, yc, d_major, d_minor, phi)
-    else:
-        image = o_image
+    # Crop image if necessary
+    image, xc_px, yc_px = _crop_image_if_needed(
+        o_image, xc_px, yc_px, d_major_px, d_minor_px, phi, crop, scale, diameters
+    )
 
     # subtract background
     working_image = subtract_iso_background(
@@ -371,21 +466,17 @@ def plot_image_analysis(
 
     min_ = image.min()
     max_ = image.max()
-    vv, hh = image.shape
-
-    # determine the semi-major and semi-minor radii
-    r_major = d_major / 2.0
-    r_minor = d_minor / 2.0
+    vv_px, hh_px = image.shape
 
     # scale all the dimensions
-    v_s = vv * scale
-    h_s = hh * scale
-    xc_s = xc * scale
-    yc_s = yc * scale
-    r_mag_s = r_major * scale
+    v_s = vv_px * scale
+    h_s = hh_px * scale
+    xc_s = xc_px * scale
+    yc_s = yc_px * scale
+
+    r_major_px = d_major_px / 2.0
+    r_mag_s = r_major_px * scale
     d_mag_s = r_mag_s * 2
-    r_min_s = r_minor * scale
-    d_min_s = r_min_s * 2
 
     plt.subplots(2, 2, figsize=(12, 12))
     plt.subplots_adjust(right=1.0)
@@ -401,21 +492,16 @@ def plot_image_analysis(
     plt.clim(min_, max_)
     plt.xlabel("Position (pixels)")
     plt.ylabel("Position (pixels)")
-    plt.title(title)
+    plt.title(title + ", center at (%.0f, %.0f) px" % (xc_px, yc_px))
 
     # working image
     plt.subplot(2, 2, 2)
     extent = np.array([-xc_s, h_s - xc_s, v_s - yc_s, -yc_s])
     im = plt.imshow(working_image, extent=extent, cmap=ccmap)
     im.cmap.set_bad(color="black")  # color for padded values
-    xp, yp = ellipse_arrays(xc, yc, d_major, d_minor, phi) * scale
-    plot_visible_dotted_line(xp - xc_s, yp - yc_s)
 
-    xp, yp = axes_arrays(xc, yc, d_major, d_minor, phi) * scale
-    plot_visible_dotted_line(xp - xc_s, yp - yc_s)
-
-    xp, yp = rotated_rect_arrays(xc, yc, d_major, d_minor, phi) * scale
-    plot_visible_dotted_line(xp - xc_s, yp - yc_s)
+    # Draw beam overlays (ellipse, axes, integration rectangle)
+    _draw_beam_overlays(xc_px, yc_px, d_major_px, d_minor_px, phi, diameters, scale)
 
     plt.colorbar(im, fraction=0.046 * v_s / h_s, pad=0.04)
     #    plt.clim(min_, max_)
@@ -423,59 +509,72 @@ def plot_image_analysis(
     plt.ylim(v_s - yc_s, -yc_s)
     plt.xlabel(label)
     plt.ylabel(label)
-    plt.title("Image w/o background, center at (%.0f, %.0f) %s" % (xc_s, yc_s, units))
+    plt.title("Image w/o background, center at (0, 0)")
 
-    # calculate gaussian fit
-    diameters = kwargs.get("max_diameters", 3)  # default to ISO default of 3 if not present
-    _, _, z_major, s_major = major_axis_arrays(image, xc, yc, d_major, d_minor, phi, diameters)
-    a_major = np.sqrt(2 / np.pi) / r_major * abs(np.sum(z_major - bkgnd) * (s_major[1] - s_major[0]))
-
-    _, _, z_minor, s_minor = minor_axis_arrays(image, xc, yc, d_major, d_minor, phi, diameters)
-    a_minor = np.sqrt(2 / np.pi) / r_minor * abs(np.sum(z_minor - bkgnd) * (s_minor[1] - s_minor[0]))
-
-    # find max and min for both plots so that both plots have equal units
     extra = 1.03
-    x_min = min(np.min(s_minor), np.min(s_major)) * scale
-    x_max = max(np.max(s_minor), np.max(s_major)) * scale
 
-    baseline = max(a_minor, a_major) * np.exp(-2 * (diameters / 2) ** 2) + bkgnd
-    base_e2 = max(a_minor, a_major) * np.exp(-2) + bkgnd
-    y_min = min(a_minor, a_major) * extra + baseline
-    y_max = max(a_minor, a_major) * extra + baseline
+    # find max and min for both plots so that both plots have equal sizes
 
-    y_min = np.min([y_min, 0, np.min(z_major), np.min(z_minor)])
-    y_max = np.max([y_max, np.max(z_major) * extra, np.max(z_minor) * extra])
+    rect_major_px = d_major_px * diameters
+    _, _, z_major, s_major_px = major_axis_arrays(image, xc_px, yc_px, rect_major_px, phi)
+    a_major = np.sqrt(2 / np.pi) / r_major_px * abs(np.sum(z_major - bkgnd) * (s_major_px[1] - s_major_px[0]))
 
-    # plot of values along major axis
+    baseline = float(a_major) * np.exp(-2 * (diameters / 2) ** 2) + bkgnd
+    base_e2 = float(a_major) * np.exp(-2) + bkgnd
+
+    y_min = min(0, np.min(z_major))
+    y_max = max(a_major, np.max(z_major)) * extra + baseline
+
     plt.subplot(2, 2, 3)
-    plt.plot(s_major * scale, z_major, "sb", markersize=2)
-    plt.plot(s_major * scale, z_major, "-b", lw=0.5)
-    z_values = bkgnd + a_major * np.exp(-2 * (s_major / r_major) ** 2)
-    plt.plot(s_major * scale, z_values, "k")
+    plt.plot(s_major_px * scale, z_major, "sb", markersize=2)
+    plt.plot(s_major_px * scale, z_major, "-b", lw=0.5)
+    z_values = bkgnd + a_major * np.exp(-2 * (s_major_px / r_major_px) ** 2)
+    plt.plot(s_major_px * scale, z_values, "k")
     plt.annotate("", (-r_mag_s, base_e2), (r_mag_s, base_e2), arrowprops={"arrowstyle": "<->"})
-    plt.text(0, 1.1 * base_e2, "d_major=%.0f %s" % (d_mag_s, units), va="bottom", ha="center")
+    plt.text(0, 1.1 * base_e2, "d_major=%.0f %s" % (d_mag_s, units_str), va="bottom", ha="center")
     plt.text(0, bkgnd + a_major, "  Gaussian Fit")
-    plt.xlabel("Distance from Center [%s]" % units)
+    plt.xlabel("Distance from Center [%s]" % units_str)
     plt.ylabel("Pixel Intensity Along Major Axis")
     plt.title("Major Axis")
     plt.ylim(y_min, y_max)
-    plt.xlim(min(s_major) * scale, max(s_major) * scale)
+    plt.xlim(min(s_major_px) * scale, max(s_major_px) * scale)
 
-    # plot of values along minor axis
-    plt.subplot(2, 2, 4)
-    plt.plot(s_minor * scale, z_minor, "sb", markersize=2)
-    plt.plot(s_minor * scale, z_minor, "-b", lw=0.5)
-    z_values = bkgnd + a_minor * np.exp(-2 * (s_minor / r_minor) ** 2)
-    plt.plot(s_minor * scale, z_values, "k")
-    plt.annotate("", (-r_min_s, base_e2), (r_min_s, base_e2), arrowprops={"arrowstyle": "<->"})
-    plt.text(0, 1.1 * base_e2, "d_minor=%.0f %s" % (d_min_s, units), va="bottom", ha="center")
-    plt.text(0, bkgnd + a_minor, "  Gaussian Fit")
-    plt.xlabel("Distance from Center [%s]" % units)
-    plt.ylabel("Pixel Intensity Along Minor Axis")
-    plt.title("Minor Axis")
-    plt.ylim(y_min, y_max)
-    plt.xlim(min(s_major) * scale, max(s_major) * scale)
-    # plt.gca().set_ylim(bottom=0)
+    if d_minor_px is not None:
+        r_minor_px = d_minor_px / 2.0
+        r_min_s = r_minor_px * scale
+        d_min_s = r_min_s * 2
+
+        rect_minor_px = d_minor_px * diameters
+        _, _, z_minor, s_minor_px = minor_axis_arrays(image, xc_px, yc_px, rect_minor_px, phi)
+        a_minor = (
+            np.sqrt(2 / np.pi) / r_minor_px * abs(np.sum(z_minor - bkgnd) * (s_minor_px[1] - s_minor_px[0]))
+        )
+
+        if d_major_px is None:
+            baseline = float(a_minor) * np.exp(-2 * (diameters / 2) ** 2) + bkgnd
+            base_e2 = float(a_minor) * np.exp(-2) + bkgnd
+
+            y_min = min(0, np.min(z_minor))
+            y_max = max(a_minor, np.max(z_major)) * extra + baseline
+
+        # plot of values along minor axis
+        plt.subplot(2, 2, 4)
+        plt.plot(s_minor_px * scale, z_minor, "sb", markersize=2)
+        plt.plot(s_minor_px * scale, z_minor, "-b", lw=0.5)
+        z_values = bkgnd + a_minor * np.exp(-2 * (s_minor_px / r_minor_px) ** 2)
+        plt.plot(s_minor_px * scale, z_values, "k")
+        plt.annotate("", (-r_min_s, base_e2), (r_min_s, base_e2), arrowprops={"arrowstyle": "<->"})
+        plt.text(0, 1.1 * base_e2, "d_minor=%.0f %s" % (d_min_s, units_str), va="bottom", ha="center")
+        plt.text(0, bkgnd + a_minor, "  Gaussian Fit")
+        plt.xlabel("Distance from Center [%s]" % units_str)
+        plt.ylabel("Pixel Intensity Along Minor Axis")
+        plt.title("Minor Axis")
+        plt.ylim(y_min, y_max)
+        plt.xlim(min(s_major_px) * scale, max(s_major_px) * scale)
+        # plt.gca().set_ylim(bottom=0)
+    else:
+        plt.subplot(2, 2, 4)
+        plt.text(0.5, 0.5, "Fit failed.", ha="center", va="center")
 
     # add more horizontal space between plots
     plt.subplots_adjust(wspace=0.3)
@@ -568,10 +667,22 @@ def plot_image_montage(
         _, _, d_major[i], d_minor[i], _ = plot_image_and_fit(im, **options, colorbar=cb)
 
         # add a title
-        if units == "mm":
-            s = "major=%.2f%s, minor=%.2f%s" % (d_major[i], units, d_minor[i], units)
+        if d_major[i] == 0:
+            s1 = "major fail"
+        elif units == "mm":
+            s1 = "major=%.2f%s" % (d_major[i], units)
         else:
-            s = "major=%.0f%s, minor=%.0f%s" % (d_major[i], units, d_minor[i], units)
+            s1 = "major=%.0f%s" % (d_major[i], units)
+
+        if d_minor[i] is None or (isinstance(d_minor[i], float) and np.isnan(d_minor[i])):
+            s2 = "minor fail"
+        elif units == "mm":
+            s2 = "minor=%.2f%s" % (d_minor[i], units)
+        else:
+            s2 = "minor=%.0f%s" % (d_minor[i], units)
+
+        s = "%s, %s" % (s1, s2)
+
         if z is None:
             plt.title(s)
         else:
