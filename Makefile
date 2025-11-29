@@ -239,7 +239,7 @@ lite: $(VENV)/.ready
 	@/bin/cp docs/images/*.png "$(STAGE_DIR)/images/"
 	@/bin/cp docs/images/*.pgm "$(STAGE_DIR)/images/"
 	@/bin/cp docs/images/*.tif "$(STAGE_DIR)/images/"
-
+	@/bin/cp docs/images/*.npy "$(STAGE_DIR)/images/"
 	@echo "==> Building JupyterLite"
 	@"$(PYTHON)" -m jupyter lite build \
 		--contents="$(STAGE_DIR)" \
