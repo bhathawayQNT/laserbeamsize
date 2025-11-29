@@ -80,24 +80,18 @@ pydocstyle.convention = "google"
 
 [tool.check-manifest]
 ignore = [
+  ".gh-pages/**",
+  ".lite_src/**",
+  ".lite_root/**",
+  "_site/**",
+  "docs/**",
   ".readthedocs.yaml",
   ".yamllint",
-  "jupyter-lite.json",
-  "jupyter_lite_config.py",
-  "requirements-dev.txt",
-  "docs/*",
+  "jupyter_lite_config.json",
   "Makefile",
   "release.txt",
-  "requirements.txt",
+  "requirements-dev.txt",
   "todo",
-  ".gh-pages",
-  ".gh-pages/*",
-  "_site",
-  "_site/*",
-  ".lite_src",
-  ".lite_src/*",
-  ".lite_root",
-  ".lite_root/*",
 ]
 
 [tool.pytest.ini_options]
