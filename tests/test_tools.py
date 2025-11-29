@@ -77,7 +77,7 @@ def test_values_along_line_diagonal_small():
 # major_axis_arrays
 def test_major_axis_arrays_horizontal_major():
     image = np.ones((5, 5))
-    x, y, z, s = major_axis_arrays(image, 2, 2, 4, 3, 0)
+    x, y, z, s = major_axis_arrays(image, 2, 2, 4, 0)
     assert np.all(y == 2)
     assert np.all(z == 1)
     assert np.isclose(x[0], 0)
@@ -88,7 +88,7 @@ def test_major_axis_arrays_horizontal_major():
 
 def test_major_axis_arrays_vertical_major():
     image = np.ones((5, 5))
-    x, y, z, s = major_axis_arrays(image, 2, 2, 3, 4, -np.pi / 2)
+    x, y, z, s = major_axis_arrays(image, 2, 2, 4, -np.pi / 2)
     assert np.all(x == 2)
     assert np.all(z == 1)
     assert np.isclose(y[0], 0)
@@ -99,7 +99,7 @@ def test_major_axis_arrays_vertical_major():
 
 def test_major_axis_arrays_large_diameter():
     image = np.ones((5, 5))
-    x, y, z, s = major_axis_arrays(image, 2, 2, 10, 2, 0)
+    x, y, z, s = major_axis_arrays(image, 2, 2, 10, 0)
     assert np.all(y == 2)
     assert np.all(z == 1)
     assert np.isclose(x[0], 0)
@@ -110,7 +110,7 @@ def test_major_axis_arrays_large_diameter():
 
 def test_major_axis_arrays_rotated():
     image = np.ones((7, 7))
-    x, y, z, s = major_axis_arrays(image, 3, 3, 3, 2, np.pi / 4)
+    x, y, z, s = major_axis_arrays(image, 3, 3, 6, np.pi / 4)
     assert np.all(z == 1)
     assert np.isclose(x[0], 1)
     assert np.isclose(x[-1], 5)
@@ -123,7 +123,7 @@ def test_major_axis_arrays_rotated():
 # minor_axis_arrays
 def test_minor_axis_arrays_horizontal():
     image = np.ones((5, 5))
-    x, y, z, s = minor_axis_arrays(image, 2, 2, 4, 3, 0)
+    x, y, z, s = minor_axis_arrays(image, 2, 2, 4, 0)
     assert np.all(x == 2)
     assert np.all(z == 1)
     assert np.isclose(y[0], 0)
@@ -134,7 +134,7 @@ def test_minor_axis_arrays_horizontal():
 
 def test_minor_axis_arrays_vertical():
     image = np.ones((5, 5))
-    x, y, z, s = minor_axis_arrays(image, 2, 2, 3, 4, -np.pi / 2)
+    x, y, z, s = minor_axis_arrays(image, 2, 2, 4, -np.pi / 2)
     assert np.all(y == 2)
     assert np.all(z == 1)
     assert np.isclose(x[0], 0)
@@ -145,7 +145,7 @@ def test_minor_axis_arrays_vertical():
 
 def test_minor_axis_arrays_large_diameter():
     image = np.ones((5, 5))
-    x, y, z, s = minor_axis_arrays(image, 2, 2, 10, 2, 0)
+    x, y, z, s = minor_axis_arrays(image, 2, 2, 10, 0)
     assert np.all(x == 2)
     assert np.all(z == 1)
     assert np.isclose(y[0], 0)
@@ -156,7 +156,7 @@ def test_minor_axis_arrays_large_diameter():
 
 def test_minor_axis_arrays_rotated():
     image = np.ones((5, 5))
-    x, y, z, _ = minor_axis_arrays(image, 2, 2, 10, 2, np.pi / 4)
+    x, y, z, _ = minor_axis_arrays(image, 2, 2, 10, np.pi / 4)
     assert np.all(z == 1)
     assert np.isclose(x[0], 0)
     assert np.isclose(x[-1], 4)
