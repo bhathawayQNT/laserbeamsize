@@ -50,6 +50,7 @@ help:
 	@echo "  html           - Build Sphinx HTML documentation"
 	@echo "  venv           - Create/provision the virtual environment ($(VENV))"
 	@echo "  lab            - Start jupyterlab"
+	@echo "  readme         - Generate images used in README.rst"
 	@echo ""
 	@echo "Test Targets:"
 	@echo "  test           - Run pytest on python files"
@@ -129,20 +130,26 @@ lint: pylint-check
 
 .PHONY: pylint-check
 pylint-check: $(VENV)/.ready
-	-@$(PYLINT) $(PACKAGE)/gaertner.py
-	-@$(PYLINT) $(PACKAGE)/ellipsometry.py
-	-@$(PYLINT) $(PACKAGE)/fresnel.py
-	-@$(PYLINT) $(PACKAGE)/jones.py
-	-@$(PYLINT) $(PACKAGE)/mueller.py
-	-@$(PYLINT) $(PACKAGE)/sym_fresnel.py
-	-@$(PYLINT) $(PACKAGE)/sym_jones.py
-	-@$(PYLINT) $(PACKAGE)/sym_mueller.py
-	-@$(PYLINT) $(PACKAGE)/visualization.py
+	-@$(PYLINT) $(PACKAGE)/__init__.py
+	-@$(PYLINT) $(PACKAGE)/analysis.py
+	-@$(PYLINT) $(PACKAGE)/background.py
+	-@$(PYLINT) $(PACKAGE)/display.py
+	-@$(PYLINT) $(PACKAGE)/gaussian.py
+	-@$(PYLINT) $(PACKAGE)/image_tools.py
+	-@$(PYLINT) $(PACKAGE)/m2_display.py
+	-@$(PYLINT) $(PACKAGE)/m2_fit.py
+	-@$(PYLINT) docs/conf.py
+	-@$(PYLINT) tests/human_test_for_phi_fixed.py
 	-@$(PYLINT) tests/test_all_notebooks.py
-	-@$(PYLINT) tests/test_jones.py
-	-@$(PYLINT) tests/test_stokes.py
-	-@$(PYLINT) tests/test_fresnel.py
-	-@$(PYLINT) tests/test_sym_fresnel.py
+	-@$(PYLINT) tests/test_back.py
+	-@$(PYLINT) tests/test_basic_beam_size.py
+	-@$(PYLINT) tests/test_fixed_phi.py
+	-@$(PYLINT) tests/test_gaussian.py
+	-@$(PYLINT) tests/test_iso_noise.py
+	-@$(PYLINT) tests/test_masks.py
+	-@$(PYLINT) tests/test_no_noise.py
+	-@$(PYLINT) tests/test_noise.py
+	-@$(PYLINT) tests/test_tools.py
 	-@$(PYLINT) .github/scripts/update_citation.py
 
 .PHONY: yaml-check
@@ -191,7 +198,12 @@ rcheck:
 	@$(MAKE) test
 	@$(MAKE) note-test
 	@echo "✅ Release checks complete"
-	
+
+.PHONY: readme
+readme: $(VENV)/.ready
+	@echo "Creating readme images..."
+	@cd docs/images && ../../$(PYTHON) run_notebook.py readme_images.ipynb
+
 .PHONY: lite
 lite: $(VENV)/.ready
 	@echo "==> Ensuring required files exist"; \
