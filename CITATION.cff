@@ -17,7 +17,7 @@ abstract: 'laserbeamsize is a Python library for analyzing laser beam quality ac
   divergence, and M² parameter from beam profile images. The package implements variance-based
   beam size calculations, background noise handling, and beam propagation analysis
   for TEM00 and higher-order modes. It is intended for education, research, and engineering
-  applications in laser metrology and beam characterization.
+  applications in laser metrology and beam characterization.'
 keywords:
 - variance
 - gaussian
