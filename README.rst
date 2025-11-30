@@ -85,7 +85,7 @@ You can also run the library immediately in the browser using JupyterLite:
 Quick Start: Determining Beam Size
 ----------------------------------
 
-Example showing how to compute beam center, major/minor axes, and rotation::
+Example showing how to compute beam center, major/minor axes, and rotation.
 
 .. code-block:: python
 
@@ -119,7 +119,7 @@ Astigmatic and Non-Gaussian Beams
 ---------------------------------
 
 The analysis also works for beams that are not well approximated by a Gaussian.  
-For example, a TEM\ :sub:`02`\  mode::
+For example, a TEM\ :sub:`02`\  mode.
 
 .. code-block:: python
 
@@ -137,7 +137,7 @@ M² Determination
 ----------------
 
 Estimating M² requires beam diameters at several locations along the propagation axis.  
-The beam diameters should be measured within ±1 Rayleigh distance and more than ±2+ Rayleigh distances::
+The beam diameters should be measured within ±1 Rayleigh distance and more than ±2+ Rayleigh distances.
 
 .. code-block:: python
 
@@ -158,7 +158,7 @@ Example: Non-ISO-Conforming Measurement Set
 -------------------------------------------
 
 The following analysis uses images collected at non-ideal distances but illustrates the fitting process.  
-The beam is a HeNe laser operating predominantly in the TEM\ :sub:`01`\  mode and rotated 38.7°::
+The beam is a HeNe laser operating predominantly in the TEM\ :sub:`01`\  mode and rotated -52°
 
 .. code-block:: python
 
@@ -195,7 +195,9 @@ Example montage output:
 Plotting the M² Fit
 -------------------
 
-Using the measured diameters::
+Using the measured diameters:
+
+.. code-block:: python
 
     lbs.M2_diameter_plot(z10, dx*1e-6, lambda0, dy=dy*1e-6)
     plt.show()
