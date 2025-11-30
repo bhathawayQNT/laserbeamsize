@@ -102,7 +102,14 @@ Example showing how to compute beam center, major/minor axes, and rotation.
     print(f"Minor axis:  {d_minor:.0f} pixels")
     print(f"Rotation:    {phi * 180/3.1416:.0f}° CCW")
 
-To produce an annotated visual report::
+results in::
+
+    Beam center: (651, 492)
+    Major axis:  369 pixels
+    Minor axis:  347 pixels
+    Rotation:    -12° CCW
+
+To produce an annotated visual report.
 
 .. code-block:: python
 
