@@ -1,6 +1,21 @@
 Changelog
 =========
 
+2.3.0
+-----
+* Jupyterlite updated to 0.64
+* fix bug with strongly asymmetric rotated beams
+* fix jupyterlite import of *.npy files
+* fix integration rect drawing when mask_diameters is not the default
+* fix handling for failed d_minor calculation
+* add make lab target
+* add make readme target for images
+* improve handling of small images
+* improve plot_image_analysis
+* improve citations
+* refactored functions in display.py
+* background.py works with images having masks
+
 2.2.0
 -----
 * Jupyterlite support on github pages
