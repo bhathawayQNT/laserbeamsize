@@ -40,5 +40,5 @@ jobs:
           git diff --exit-code || (
             git add CITATION.cff README.rst &&
             git commit -m "Update CITATION.cff with latest release date" &&
-            git push
+            git push origin HEAD:${{ github.event.release.target_commitish || github.ref_name }}
           )
