@@ -1,34 +1,19 @@
+_site/
+.cache/
 .DS_Store
-*.pyc
-.cache
-.eggs
+.ipynb_checkpoints/
 .jupyterlite.doit.db
+.gh-pages/
+.lite_src/
+.tox/
 .venv/
-.virtual_documents
-dist
-laserbeamsize/__pycache__
-laserbeamsize.egg-info
-docs/.ipynb_checkpoints/
+
+dist/
+docs/.ipynb_checkpoints
 docs/_build/
 docs/api/
-docs/images/.ipynb_checkpoints/
-todo
-lite/
+docs/Untitled*
+laserbeamsize.egg-info/
+laserbeamsize/__pycache__/
 problems/
-
-# Python bytecode
-__pycache__/
-*.py[cod]
-*$py.class
-
-# JupyterLite build artifacts
-_site/
-.lite_src/
-.lite_root/
-.jupyterlite.doit.db
-
-# GitHub Pages deployment worktree
-.gh-pages/
-
-# Temporary files
-.tmp
+todo
