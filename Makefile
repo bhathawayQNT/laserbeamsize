@@ -204,10 +204,7 @@ readme: $(VENV)/.ready
 	@cd docs/images && ../../$(PYTHON) run_notebook.py readme_images.ipynb
 
 .PHONY: lite
-lite: $(VENV)/.ready
-	@echo "==> Ensuring required files exist"; \
-	test -f "$(ROOT)/jupyter_lite_config.json" || (echo "❌ Missing jupyter_lite_config.json" && false)
-
+lite: $(VENV)/.ready $(LITE_CONFIG)
 	@echo "==> Building package wheel for PyOdide"
 	@$(PYTHON) -m build
 
