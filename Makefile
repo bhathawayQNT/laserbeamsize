@@ -305,19 +305,22 @@ clean:
 	@find . -name '.DS_Store' -type f -delete
 	@find . -name '.ipynb_checkpoints' -type d -prune -exec rm -rf {} +
 	@find . -name '.pytest_cache' -type d -prune -exec rm -rf {} +
+	@/bin/rm -rf .cache
 	@/bin/rm -rf .ruff_cache
+	@/bin/rm -rf .yamllint
 	@/bin/rm -rf $(PACKAGE).egg-info
 	@/bin/rm -rf docs/api
 	@/bin/rm -rf docs/_build
 	@/bin/rm -rf tests/charts
 	@/bin/rm -rf dist
 
+
 .PHONY: lite-clean
 lite-clean:
 	@echo "==> Cleaning JupyterLite build artifacts"
 	@/bin/rm -rf "$(STAGE_DIR)"
 	@/bin/rm -rf "$(OUT_ROOT)"
-	@/bin/rm -rf ".lite_root"
+	@/bin/rm -rf ".lite_src"
 	@/bin/rm -rf "$(DOIT_DB)"
 	@/bin/rm -rf "_output"
 	@/bin/rm -rf "_site"
