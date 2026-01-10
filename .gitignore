@@ -16,4 +16,5 @@ docs/Untitled*
 laserbeamsize.egg-info/
 laserbeamsize/__pycache__/
 problems/
+tests/__pycache__/
 todo

@@ -18,21 +18,21 @@ jobs:
         python-version: ["3.10", "3.12"]
 
     steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
+    - name: Checkout sources
+      uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
 
-      - name: Install package and dependencies
-        run: |
-          pip install pytest
-          pip install -e .  # current package in editable mode
+    - name: Install package and dependencies
+      run: |
+        pip install pytest
+        pip install -e .  # current package in editable mode
 
-      - name: Test with pytest
-        run: pytest tests/test_basics.py
+    - name: Test with pytest
+      run: pytest tests/test_basics.py
 
     - name: Run pytest
       run: pytest tests/test_basic_beam_size.py
