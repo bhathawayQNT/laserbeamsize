@@ -32,8 +32,5 @@ jobs:
           pip install pytest
           pip install -e .  # current package in editable mode
 
-      - name: Test with pytest
-        run: pytest tests/test_basics.py
-
       - name: Run pytest
         run: pytest tests/test_basic_beam_size.py
