@@ -30,10 +30,11 @@ __copyright__ = "2017-25, Scott Prahl"
 __license__ = "MIT"
 __url__ = "https://github.com/scottprahl/laserbeamsize"
 
-from .image_tools import *
-from .background import *
 from .analysis import *
+from .background import *
 from .display import *
 from .gaussian import *
-from .m2_fit import *
+from .image_tools import *
 from .m2_display import *
+from .m2_fit import *
+from .masks import *
